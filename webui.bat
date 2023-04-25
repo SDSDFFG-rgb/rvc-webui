@@ -41,7 +41,7 @@ set PYTHON="%VENV_DIR%\Scripts\Python.exe"
 echo venv %PYTHON%
 
 :launch
-%PYTHON% launch.py %*
+%PYTHON% launch.py --port 4533%*
 pause
 exit /b
 
