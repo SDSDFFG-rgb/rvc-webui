@@ -6,8 +6,7 @@ from multiprocessing import cpu_count
 import gradio as gr
 
 from lib.rvc.preprocessing import extract_f0, extract_feature, split
-from lib.rvc.train import (create_dataset_meta, glob_dataset, train_index,
-                           train_model)
+from lib.rvc.train import create_dataset_meta, glob_dataset, train_index, train_model
 from modules import models, utils
 from modules.shared import MODELS_DIR, device, half_support
 from modules.ui import Tab
@@ -149,6 +148,7 @@ class Training(Tab):
             cache_batch,
             num_epochs,
             save_every_epoch,
+            save_wav_with_checkpoint,
             fp16,
             pre_trained_bottom_model_g,
             pre_trained_bottom_model_d,
@@ -182,6 +182,7 @@ class Training(Tab):
                 speaker_id,
                 multiple_speakers=multiple_speakers,
                 recursive=recursive,
+                training_dir=training_dir,
             )
 
             if len(datasets) == 0:
@@ -258,6 +259,7 @@ class Training(Tab):
                 cache_batch,
                 num_epochs,
                 save_every_epoch,
+                save_wav_with_checkpoint,
                 pre_trained_bottom_model_g,
                 pre_trained_bottom_model_d,
                 embedder_name,
@@ -284,7 +286,7 @@ class Training(Tab):
         with gr.Group():
             with gr.Box():
                 with gr.Column():
-                    with gr.Row().style():
+                    with gr.Row():
                         with gr.Column():
                             model_name = gr.Textbox(label="Model Name")
                             ignore_cache = gr.Checkbox(label="Ignore cache")
@@ -304,7 +306,7 @@ class Training(Tab):
                                 label="Speaker ID",
                             )
 
-                    with gr.Row().style(equal_height=False):
+                    with gr.Row(equal_height=False):
                         version = gr.Radio(
                             choices=["v1", "v2"],
                             value="v2",
@@ -320,7 +322,7 @@ class Training(Tab):
                             value="Yes",
                             label="f0 Model",
                         )
-                    with gr.Row().style(equal_height=False):
+                    with gr.Row(equal_height=False):
                         embedding_name = gr.Radio(
                             choices=list(models.EMBEDDINGS_LIST.keys()),
                             value="contentvec",
@@ -336,7 +338,7 @@ class Training(Tab):
                             value="12",
                             label="Embedding output layer",
                         )
-                    with gr.Row().style(equal_height=False):
+                    with gr.Row(equal_height=False):
                         gpu_id = gr.Textbox(
                             label="GPU ID",
                             value=", ".join([f"{x.index}" for x in utils.get_gpus()]),
@@ -354,11 +356,11 @@ class Training(Tab):
                             label="Normalize audio volume when preprocess",
                         )
                         pitch_extraction_algo = gr.Radio(
-                            choices=["dio", "harvest"],
-                            value="harvest",
+                            choices=["dio", "harvest", "mangio-crepe", "crepe"],
+                            value="crepe",
                             label="Pitch extraction algorithm",
                         )
-                    with gr.Row().style(equal_height=False):
+                    with gr.Row(equal_height=False):
                         batch_size = gr.Number(value=4, label="Batch size")
                         num_epochs = gr.Number(
                             value=30,
@@ -371,22 +373,27 @@ class Training(Tab):
                             step=1,
                             label="Save every epoch",
                         )
+                        save_wav_with_checkpoint = gr.Checkbox(
+                            label="save_wav_with_checkpoint", value=False
+                        )
                         cache_batch = gr.Checkbox(label="Cache batch", value=True)
                         fp16 = gr.Checkbox(
                             label="FP16", value=half_support, disabled=not half_support
                         )
-                    with gr.Row().style(equal_height=False):
+                    with gr.Row(equal_height=False):
                         augment = gr.Checkbox(label="Augment", value=False)
-                        augment_from_pretrain = gr.Checkbox(label="Augment From Pretrain", value=False)
+                        augment_from_pretrain = gr.Checkbox(
+                            label="Augment From Pretrain", value=False
+                        )
                         augment_path = gr.Textbox(
                             label="Pre trained generator path (pth)",
-                            value="file is not prepared"
+                            value="file is not prepared",
                         )
                         speaker_info_path = gr.Textbox(
                             label="speaker info path (npy)",
-                            value="file is not prepared"
+                            value="file is not prepared",
                         )
-                    with gr.Row().style(equal_height=False):
+                    with gr.Row(equal_height=False):
                         pre_trained_generator = gr.Textbox(
                             label="Pre trained generator path",
                             value=os.path.join(
@@ -399,7 +406,7 @@ class Training(Tab):
                                 MODELS_DIR, "pretrained", "v2", "f0D40k.pth"
                             ),
                         )
-                    with gr.Row().style(equal_height=False):
+                    with gr.Row(equal_height=False):
                         run_train_index = gr.Radio(
                             choices=["Yes", "No"],
                             value="Yes",
@@ -414,9 +421,9 @@ class Training(Tab):
                             value=10000, label="maximum index size"
                         )
 
-                    with gr.Row().style(equal_height=False):
+                    with gr.Row(equal_height=False):
                         status = gr.Textbox(value="", label="Status")
-                    with gr.Row().style(equal_height=False):
+                    with gr.Row(equal_height=False):
                         train_index_button = gr.Button("Train Index", variant="primary")
                         train_all_button = gr.Button("Train", variant="primary")
 
@@ -468,6 +475,7 @@ class Training(Tab):
                 cache_batch,
                 num_epochs,
                 save_every_epoch,
+                save_wav_with_checkpoint,
                 fp16,
                 pre_trained_generator,
                 pre_trained_discriminator,
